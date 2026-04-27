@@ -5,20 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Vitality Score</title>
     
-    <!-- Tailwind CSS for Styling -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- FontAwesome for Icons -->
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         body { 
-            background-color: #0f172a; /* Dark slate background */
+            background-color: #0f172a;
             color: #f8fafc; 
             margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
-        /* Custom scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -28,13 +27,302 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
-        }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
+    <!-- Header -->
+    <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gradient-to-br from-red-500 to-red-700 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-red-500/20">
+                    <i class="fa-solid fa-fire text-white text-xl"></i>
+                </div>
+                <span class="text-2xl font-extrabold tracking-tight text-white">
+                    Vitality<span class="text-red-500">Score</span>
+                </span>
+            </div>
+            <button onclick="document.getElementById('auth-modal').classList.remove('hidden')" class="flex items-center space-x-2 text-sm font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-5 py-2.5 rounded-full transition-all border border-slate-700 hover:border-slate-500">
+                <i class="fa-brands fa-google text-red-400"></i>
+                <span class="hidden sm:inline">Connect Auth</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+        
+        <!-- Search Area -->
+        <div class="text-center max-w-3xl mx-auto mb-16">
+            <h1 class="text-5xl md:text-6xl font-black tracking-tight mb-6 text-white leading-tight">
+                Measure a Video's <br/>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-amber-500">Viral Potential</span>
+            </h1>
+            <p class="text-slate-400 text-lg mb-10 max-w-2xl mx-auto">
+                Paste any YouTube link below to instantly analyze its engagement velocity, historical algorithm patterns, and overall vitality score.
+            </p>
+            
+            <form id="search-form" class="relative group max-w-2xl mx-auto">
+                <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                    <i class="fa-brands fa-youtube text-2xl text-slate-500 group-focus-within:text-red-500 transition-colors"></i>
+                </div>
+                <input
+                    type="text"
+                    id="url-input"
+                    placeholder="Paste a YouTube link here..."
+                    class="block w-full pl-16 pr-36 py-5 bg-slate-800/80 border-2 border-slate-700 rounded-2xl leading-5 text-white placeholder-slate-500 focus:outline-none focus:ring-0 focus:border-red-500 sm:text-lg transition-all shadow-xl"
+                    autocomplete="off"
+                />
+                <div class="absolute inset-y-2 right-2">
+                    <button type="submit" id="analyze-btn" class="flex items-center justify-center w-full h-full px-8 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-600/30">
+                        <span id="btn-text">Analyze <i class="fa-solid fa-arrow-right ml-2"></i></span>
+                        <i id="btn-spinner" class="fa-solid fa-circle-notch fa-spin text-xl hidden"></i>
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Error Message -->
+            <div id="error-message" class="hidden mt-6 items-center justify-center text-red-400 space-x-2 bg-red-400/10 py-3 px-4 rounded-lg border border-red-400/20 max-w-2xl mx-auto">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span id="error-text" class="font-medium"></span>
+            </div>
+        </div>
+
+        <!-- Skeleton Loading -->
+        <div id="loading-skeleton" class="hidden animate-pulse space-y-8 max-w-5xl mx-auto">
+            <div class="h-72 bg-slate-800/50 rounded-3xl w-full border border-slate-700/50"></div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="h-32 bg-slate-800/50 rounded-2xl"></div>
+                <div class="h-32 bg-slate-800/50 rounded-2xl"></div>
+                <div class="h-32 bg-slate-800/50 rounded-2xl"></div>
+                <div class="h-32 bg-slate-800/50 rounded-2xl"></div>
+            </div>
+        </div>
+
+        <!-- Results Dashboard -->
+        <div id="results-dashboard" class="hidden max-w-5xl mx-auto fade-in">
+            <!-- Top Banner -->
+            <div class="bg-slate-800/40 border border-slate-700 rounded-3xl p-6 md:p-8 flex flex-col lg:flex-row gap-10 items-center mb-8 shadow-2xl relative overflow-hidden">
+                <div class="w-full lg:w-1/2 relative rounded-2xl overflow-hidden shadow-2xl group border border-slate-700">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-80 z-10"></div>
+                    <img id="video-thumbnail" src="" alt="Thumbnail" class="w-full aspect-video object-cover transform group-hover:scale-105 transition-transform duration-700" />
+                    <div class="absolute bottom-4 left-4 z-20 flex space-x-2">
+                        <span class="bg-red-600 text-white text-xs font-black px-2.5 py-1 rounded shadow">ANALYZED</span>
+                        <span id="video-id-badge" class="bg-black/60 backdrop-blur-md text-white text-xs font-mono px-2.5 py-1 rounded"></span>
+                    </div>
+                </div>
+                
+                <div class="w-full lg:w-1/2 flex flex-col items-center lg:items-start text-center lg:text-left">
+                    <h2 class="text-3xl font-bold text-white mb-3">Video Vitality</h2>
+                    <p class="text-slate-400 text-base mb-8 max-w-md">
+                        The overall score is a composite metric weighing current velocity, engagement rates, and predicted algorithmic push.
+                    </p>
+                    
+                    <div class="flex items-center space-x-8 bg-slate-900/80 p-6 rounded-3xl border border-slate-700 shadow-inner w-full justify-center lg:justify-start">
+                        <div class="relative flex items-center justify-center">
+                            <svg height="110" width="110" class="transform -rotate-90">
+                                <circle stroke="currentColor" fill="transparent" stroke-width="10" r="45" cx="55" cy="55" class="text-slate-800"></circle>
+                                <circle id="score-circle" stroke="currentColor" fill="transparent" stroke-width="10" stroke-dasharray="282.74" stroke-dashoffset="282.74" stroke-linecap="round" r="45" cx="55" cy="55" class="text-red-500 drop-shadow-lg" style="transition: stroke-dashoffset 1.5s ease-out;"></circle>
+                            </svg>
+                            <div class="absolute flex flex-col items-center justify-center">
+                                <span id="score-number" class="text-4xl font-extrabold text-white">0</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="flex items-center space-x-3 text-emerald-400 bg-emerald-400/10 px-4 py-2 rounded-lg border border-emerald-400/20">
+                                <i class="fa-solid fa-arrow-trend-up"></i>
+                                <span class="font-bold text-sm uppercase tracking-wide">Trending</span>
+                            </div>
+                            <div class="flex items-center space-x-3 text-amber-400 bg-amber-400/10 px-4 py-2 rounded-lg border border-amber-400/20">
+                                <i class="fa-solid fa-bolt"></i>
+                                <span class="font-bold text-sm uppercase tracking-wide">Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-5 flex flex-col items-start">
+                    <div class="flex items-center space-x-3 mb-3">
+                        <div class="p-2 rounded-xl text-blue-400 bg-blue-400/20"><i class="fa-solid fa-eye text-lg"></i></div>
+                        <span class="text-slate-400 font-medium">Simulated Views</span>
+                    </div>
+                    <div id="stat-views" class="text-2xl font-bold text-white">0</div>
+                </div>
+                <div class="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-5 flex flex-col items-start">
+                    <div class="flex items-center space-x-3 mb-3">
+                        <div class="p-2 rounded-xl text-emerald-400 bg-emerald-400/20"><i class="fa-solid fa-thumbs-up text-lg"></i></div>
+                        <span class="text-slate-400 font-medium">Total Likes</span>
+                    </div>
+                    <div id="stat-likes" class="text-2xl font-bold text-white">0</div>
+                </div>
+                <div class="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-5 flex flex-col items-start">
+                    <div class="flex items-center space-x-3 mb-3">
+                        <div class="p-2 rounded-xl text-pink-400 bg-pink-400/20"><i class="fa-solid fa-comment-dots text-lg"></i></div>
+                        <span class="text-slate-400 font-medium">Comments</span>
+                    </div>
+                    <div id="stat-comments" class="text-2xl font-bold text-white">0</div>
+                </div>
+                <div class="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-5 flex flex-col items-start">
+                    <div class="flex items-center space-x-3 mb-3">
+                        <div class="p-2 rounded-xl text-amber-400 bg-amber-400/20"><i class="fa-solid fa-gauge-high text-lg"></i></div>
+                        <span class="text-slate-400 font-medium">Velocity / Hr</span>
+                    </div>
+                    <div id="stat-velocity" class="text-2xl font-bold text-white">0</div>
+                </div>
+            </div>
+
+            <!-- Detailed Breakdown -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-slate-800/40 border border-slate-700 rounded-3xl p-8">
+                    <div class="flex items-center space-x-3 mb-8">
+                        <i class="fa-solid fa-chart-simple text-2xl text-indigo-400"></i>
+                        <h3 class="text-2xl font-bold text-white">Algorithm Drivers</h3>
+                    </div>
+                    
+                    <div class="mb-5">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-slate-300 font-semibold">Initial Momentum</span>
+                            <span id="pct-momentum" class="text-slate-400">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-3 border border-slate-700">
+                            <div id="bar-momentum" class="h-3 rounded-full bg-gradient-to-r from-blue-600 to-blue-400 w-0" style="transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1)"></div>
+                        </div>
+                    </div>
+                    <div class="mb-5">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-slate-300 font-semibold">Evergreen Potential</span>
+                            <span id="pct-longevity" class="text-slate-400">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-3 border border-slate-700">
+                            <div id="bar-longevity" class="h-3 rounded-full bg-gradient-to-r from-purple-600 to-purple-400 w-0" style="transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1)"></div>
+                        </div>
+                    </div>
+                    <div class="mb-5">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-slate-300 font-semibold">Shareability Index</span>
+                            <span id="pct-share" class="text-slate-400">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-3 border border-slate-700">
+                            <div id="bar-share" class="h-3 rounded-full bg-gradient-to-r from-orange-600 to-orange-400 w-0" style="transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1)"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/40 border border-slate-700 rounded-3xl p-8 flex flex-col">
+                    <div class="flex items-center space-x-3 mb-6">
+                        <i class="fa-solid fa-bullseye text-2xl text-teal-400"></i>
+                        <h3 class="text-2xl font-bold text-white">Engagement Rate</h3>
+                    </div>
+                    <div class="flex items-baseline space-x-2 mb-4">
+                        <span id="stat-engagement" class="text-7xl font-black text-white tracking-tighter">0.0%</span>
+                    </div>
+                    <p id="engagement-text" class="text-slate-400 leading-relaxed mb-6"></p>
+                    <div class="mt-auto pt-6 border-t border-slate-700 flex justify-between text-sm text-slate-500">
+                        <span>Data Source</span>
+                        <span class="text-slate-300 font-mono bg-slate-900 px-2 py-1 rounded">Simulation Engine v3</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Google Auth Modal -->
+    <div id="auth-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-md w-full p-8 shadow-2xl relative">
+            <button onclick="document.getElementById('auth-modal').classList.add('hidden')" class="absolute top-5 right-5 text-slate-500 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <div class="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mb-6 mx-auto border border-red-500/20">
+                <i class="fa-brands fa-google text-3xl text-red-500"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-white text-center mb-2">Connect Google APIs</h3>
+            <p class="text-slate-400 text-center mb-8 text-sm leading-relaxed">
+                Authenticate to fetch live YouTube Data API metrics instead of simulated analytics.
+            </p>
+            <button onclick="triggerMockAuth()" class="w-full bg-white text-slate-900 hover:bg-slate-100 font-bold py-4 px-4 rounded-xl flex items-center justify-center space-x-3 transition-colors shadow-lg">
+                <i class="fa-brands fa-google"></i>
+                <span>Sign in with Google</span>
+            </button>
+            <div class="mt-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700 text-xs text-slate-400 font-mono">
+                <span class="text-emerald-400 font-bold mb-1 block">// Auth configuration:</span>
+                Using <span class="text-white">prompt: 'select_account'</span> to prevent legacy consent loop errors.
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        const form = document.getElementById('search-form');
+        const urlInput = document.getElementById('url-input');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnSpinner = document.getElementById('btn-spinner');
+        const errorContainer = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        const loadingSkeleton = document.getElementById('loading-skeleton');
+        const resultsDashboard = document.getElementById('results-dashboard');
+
+        // Foolproof YouTube ID Extractor (Handles Watch, Shorts, Live, youtu.be, and ?si= trackers)
+        const extractVideoId = (url) => {
+            try {
+                const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts|live)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+                const match = url.match(regex);
+                return match ? match[1] : false;
+            } catch(e) {
+                return false;
+            }
+        };
+
+        const cyrb128 = (str) => {
+            let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
+            for (let i = 0, k; i < str.length; i++) {
+                k = str.charCodeAt(i);
+                h1 = h2 ^ Math.imul(h1 ^ k, 597399067); h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+                h3 = h4 ^ Math.imul(h3 ^ k, 951274213); h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+            }
+            h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067); h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+            h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213); h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+            h1 ^= (h2 ^ h3 ^ h4), h2 ^= h1, h3 ^= h1, h4 ^= h1;
+            return [h1>>>0, h2>>>0, h3>>>0, h4>>>0];
+        };
+
+        const sfc32 = (a, b, c, d) => {
+            return function() {
+                a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0; 
+                let t = (a + b | 0) + d | 0; d = d + 1 | 0;
+                a = b ^ b >>> 9; b = c + (c << 3) | 0; c = (c << 21 | c >>> 11); c = c + t | 0;
+                return (t >>> 0) / 4294967296;
+            }
+        };
+
+        const runAnalysis = (url) => {
+            if (!url) return;
+
+            const videoId = extractVideoId(url);
+            if (!videoId) {
+                errorText.innerText = "Please enter a valid YouTube link (Supports regular videos, Shorts, and Live links).";
+                errorContainer.classList.remove('hidden');
+                errorContainer.classList.add('flex');
+                resultsDashboard.classList.add('hidden');
+                return;
+            }
+
+            errorContainer.classList.add('hidden');
+            errorContainer.classList.remove('flex');
+            resultsDashboard.classList.add('hidden');
+            
+            analyzeBtn.disabled = true;
+            btnText.classList.add('hidden');
+            btnSpinner.classList.remove('hidden');
+            loadingSkeleton.classList.remove('hidden');
+
+            setTimeout(() => {
+                const seed = cyrb128(video
     <!-- Header -->
     <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
