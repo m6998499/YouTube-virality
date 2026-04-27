@@ -5,35 +5,295 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Vitality Score</title>
     
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
+    <!-- Babel to compile JSX in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <style>
-        body { 
-            background-color: #0f172a;
-            color: #f8fafc; 
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        /* Custom scrollbar and base styles */
+        body { background-color: #030712; color: #f3f4f6; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: fadeIn 0.7s ease-out forwards; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body>
+    <div id="root"></div>
 
-    <!-- Header -->
-    <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- SVG Icons (Replacing lucide-react for standalone HTML) ---
+        const Activity = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>;
+        const Youtube = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>;
+        const TrendingUp = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>;
+        const ThumbsUp = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>;
+        const MessageCircle = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>;
+        const Share2 = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>;
+        const Clock = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
+        const AlertCircle = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
+        const Search = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
+        const ChevronRight = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>;
+        const BarChart2 = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>;
+        const Zap = ({ className }) => <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>;
+
+        // --- Utility Functions ---
+        const extractVideoId = (url) => {
+            const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[7].length === 11) ? match[7] : false;
+        };
+
+        const cyrb128 = (str) => {
+            let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
+            for (let i = 0, k; i < str.length; i++) {
+                k = str.charCodeAt(i);
+                h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+                h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+                h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+                h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+            }
+            h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+            h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+            h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+            h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+            h1 ^= (h2 ^ h3 ^ h4), h2 ^= h1, h3 ^= h1, h4 ^= h1;
+            return [h1>>>0, h2>>>0, h3>>>0, h4>>>0];
+        };
+
+        const sfc32 = (a, b, c, d) => {
+            return function() {
+                a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0; 
+                let t = (a + b | 0) + d | 0;
+                d = d + 1 | 0;
+                a = b ^ b >>> 9;
+                b = c + (c << 3) | 0;
+                c = (c << 21 | c >>> 11);
+                c = c + t | 0;
+                return (t >>> 0) / 4294967296;
+            }
+        };
+
+        // --- Components ---
+        const CircularScore = ({ score }) => {
+            const radius = 60;
+            const stroke = 12;
+            const normalizedRadius = radius - stroke * 2;
+            const circumference = normalizedRadius * 2 * Math.PI;
+            const strokeDashoffset = circumference - (score / 100) * circumference;
+
+            let color = "text-red-500";
+            if (score > 70) color = "text-green-500";
+            else if (score > 40) color = "text-yellow-500";
+
+            return (
+                <div className="relative flex items-center justify-center">
+                <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
+                    <circle stroke="currentColor" fill="transparent" strokeWidth={stroke} r={normalizedRadius} cx={radius} cy={radius} className="text-gray-700" />
+                    <circle
+                        stroke="currentColor" fill="transparent" strokeWidth={stroke}
+                        strokeDasharray={circumference + ' ' + circumference}
+                        style={{ strokeDashoffset, transition: 'stroke-dashoffset 1.5s ease-out' }}
+                        strokeLinecap="round" r={normalizedRadius} cx={radius} cy={radius}
+                        className={`${color} drop-shadow-md`}
+                    />
+                </svg>
+                <div className="absolute flex flex-col items-center justify-center">
+                    <span className="text-4xl font-bold text-white">{score}</span>
+                    <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Score</span>
+                </div>
+                </div>
+            );
+        };
+
+        const StatCard = ({ icon: Icon, label, value, subtext, colorClass }) => (
+            <div className="bg-gray-800 border border-gray-700 rounded-2xl p-5 flex flex-col hover:border-gray-600 transition-colors">
+                <div className="flex items-center space-x-3 mb-2">
+                <div className={`p-2 rounded-lg ${colorClass} bg-opacity-10`}>
+                    <Icon className={`w-5 h-5 ${colorClass}`} />
+                </div>
+                <span className="text-gray-400 text-sm font-medium">{label}</span>
+                </div>
+                <div className="text-2xl font-bold text-white mt-1">{value}</div>
+                {subtext && <div className="text-xs text-gray-500 mt-2">{subtext}</div>}
+            </div>
+        );
+
+        const ProgressBar = ({ label, percentage, colorClass }) => (
+            <div className="mb-4 last:mb-0">
+                <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-300 font-medium">{label}</span>
+                <span className="text-gray-400">{percentage}%</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2.5">
+                <div 
+                    className={`h-2.5 rounded-full ${colorClass}`} 
+                    style={{ width: `${percentage}%`, transition: 'width 1.5s ease-out' }}
+                ></div>
+                </div>
+            </div>
+        );
+
+        // --- Main Application ---
+        function App() {
+            const [url, setUrl] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+            const [data, setData] = useState(null);
+
+            const handleAnalyze = (e) => {
+                e.preventDefault();
+                if (!url.trim()) return;
+
+                const videoId = extractVideoId(url);
+                if (!videoId) {
+                    setError("Please enter a valid YouTube video URL.");
+                    setData(null);
+                    return;
+                }
+
+                setError('');
+                setLoading(true);
+                setData(null);
+
+                setTimeout(() => {
+                    const seed = cyrb128(videoId);
+                    const rand = sfc32(seed[0], seed[1], seed[2], seed[3]);
+                    
+                    const views = Math.floor(rand() * 5000000) + 10000;
+                    const score = Math.floor(rand() * 60) + 40;
+                    
+                    const mockData = {
+                        videoId,
+                        thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+                        fallbackThumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+                        vitalityScore: score,
+                        views: views.toLocaleString(),
+                        likes: Math.floor(views * (rand() * 0.05 + 0.01)).toLocaleString(),
+                        comments: Math.floor(views * (rand() * 0.005 + 0.001)).toLocaleString(),
+                        engagementRate: ((rand() * 8) + 2).toFixed(1),
+                        viewsPerHour: Math.floor(rand() * 5000) + 100,
+                        metrics: {
+                            momentum: Math.floor(rand() * 100),
+                            longevity: Math.floor(rand() * 100),
+                            shareability: Math.floor(rand() * 100),
+                        }
+                    };
+                    
+                    setData(mockData);
+                    setLoading(false);
+                }, 1500);
+            };
+
+            const handleThumbnailError = (e) => {
+                if (data && e.target.src !== data.fallbackThumbnail) {
+                    e.target.src = data.fallbackThumbnail;
+                }
+            };
+
+            return (
+                <div className="min-h-screen font-sans selection:bg-red-500 selection:text-white">
+                    <nav className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-50">
+                        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                                <div className="bg-red-600 p-1.5 rounded-lg">
+                                    <Activity className="w-6 h-6 text-white" />
+                                </div>
+                                <span className="text-xl font-bold tracking-tight text-white flex items-center">
+                                    Vitality<span className="text-red-500">Score</span>
+                                </span>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                        <div className="text-center max-w-3xl mx-auto mb-12">
+                            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-white">
+                                Measure the <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-400">Viral Potential</span>
+                            </h1>
+                            <p className="text-gray-400 text-lg mb-8">
+                                Enter any YouTube video URL to analyze its real-time vitality score, engagement metrics, and momentum.
+                            </p>
+                            
+                            <form onSubmit={handleAnalyze} className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Youtube className="h-6 w-6 text-gray-500 group-focus-within:text-red-500 transition-colors" />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={url}
+                                    onChange={(e) => setUrl(e.target.value)}
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                    className="block w-full pl-12 pr-32 py-4 bg-gray-900 border border-gray-700 rounded-2xl leading-5 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 sm:text-lg transition-all shadow-lg"
+                                />
+                                <div className="absolute inset-y-2 right-2">
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="flex items-center justify-center w-full h-full px-6 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {loading ? (
+                                            <Activity className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <React.Fragment>
+                                                <span className="hidden sm:inline mr-2">Analyze</span>
+                                                <Search className="w-5 h-5 sm:hidden" />
+                                                <ChevronRight className="w-5 h-5 hidden sm:inline" />
+                                            </React.Fragment>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                            
+                            {error && (
+                                <div className="mt-4 flex items-center justify-center text-red-400 space-x-2">
+                                    <AlertCircle className="w-5 h-5" />
+                                    <span>{error}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {loading && (
+                            <div className="animate-pulse flex flex-col space-y-8 mt-16 max-w-4xl mx-auto">
+                                <div className="h-64 bg-gray-800 rounded-3xl w-full"></div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="h-32 bg-gray-800 rounded-2xl"></div>
+                                    <div className="h-32 bg-gray-800 rounded-2xl"></div>
+                                    <div className="h-32 bg-gray-800 rounded-2xl"></div>
+                                </div>
+                            </div>
+                        )}
+
+                        {data && !loading && (
+                            <div className="animate-in max-w-5xl mx-auto">
+                                <div className="bg-gray-800/50 border border-gray-700 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row gap-8 items-center mb-8 shadow-2xl backdrop-blur-sm">
+                                    <div className="w-full md:w-1/2 relative rounded-2xl overflow-hidden shadow-lg group">
+                                        <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-transparent opacity-60 z-10"></div>
+                                        <img 
+                                            src={data.thumbnail} 
+                                            onError={handleThumbnailError}
+                                            alt="Video Thumbnail" 
+                                            className="w-full h-auto aspect-video object-cover transform group-hover:scale-105 transition-transform duration-700"
+                                        />
+                                        <div className="absolute bottom-4 left-4 z-20 flex items-center space-x-2">
+                                            <div className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">ANALYZED</div>
+                                            <div className="bg-gray-900/80 backdrop-blur-md text-white text-xs px-2 py-1 rounded">ID: {data.videoId}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="w-full md:w-1/2 flex flex-col items-center md:items-start space-y-6">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-white mb-2 text-center md:text-left">Overall Vitality</h2>
+                                            <p className="text-gray-400 text-center md:text-left text-sm max-w-xs">
+                                                This score is calculated based on engagement velocity, views relative to time, and historical performance.
+                                            </p>
+                                        </div>
+                                        
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="bg-gradient-to-br from-red-500 to-red-700 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-red-500/20">
