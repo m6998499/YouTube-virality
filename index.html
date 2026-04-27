@@ -1,40 +1,359 @@
-```react
-import React, { useState, useEffect } from 'react';
-import { 
-  Activity, 
-  Youtube, 
-  TrendingUp, 
-  ThumbsUp, 
-  MessageCircle, 
-  Share2, 
-  Clock, 
-  AlertCircle,
-  Search,
-  ChevronRight,
-  BarChart2,
-  Zap,
-  LogIn
-} from 'lucide-react';
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Vitality Tracker</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel for compiling JSX in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-// --- Utility Functions ---
+    <style>
+        body { background-color: #030712; color: #f3f4f6; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-// Extracts YouTube Video ID from various URL formats
-const extractVideoId = (url) => {
-  const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[7].length === 11) ? match[7] : false;
-};
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-// Seeded random number generator based on a string (Video ID)
-// This ensures the same URL always gets the same "mock" score
-const cyrb128 = (str) => {
-  let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
-  for (let i = 0, k; i < str.length; i++) {
-    k = str.charCodeAt(i);
-    h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
-    h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
-    h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
-    h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+        // --- Utility Functions ---
+        const extractVideoId = (url) => {
+            const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[7].length === 11) ? match[7] : false;
+        };
+
+        const cyrb128 = (str) => {
+            let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
+            for (let i = 0, k; i < str.length; i++) {
+                k = str.charCodeAt(i);
+                h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+                h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+                h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+                h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+            }
+            h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+            h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+            h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+            h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+            h1 ^= (h2 ^ h3 ^ h4), h2 ^= h1, h3 ^= h1, h4 ^= h1;
+            return [h1>>>0, h2>>>0, h3>>>0, h4>>>0];
+        };
+
+        const sfc32 = (a, b, c, d) => {
+            return function() {
+                a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0; 
+                let t = (a + b | 0) + d | 0;
+                d = d + 1 | 0;
+                a = b ^ b >>> 9;
+                b = c + (c << 3) | 0;
+                c = (c << 21 | c >>> 11);
+                c = c + t | 0;
+                return (t >>> 0) / 4294967296;
+            }
+        };
+
+        // --- Components ---
+        const CircularScore = ({ score }) => {
+            const radius = 60;
+            const stroke = 12;
+            const normalizedRadius = radius - stroke * 2;
+            const circumference = normalizedRadius * 2 * Math.PI;
+            const strokeDashoffset = circumference - (score / 100) * circumference;
+
+            let color = "text-red-500";
+            if (score > 70) color = "text-green-500";
+            else if (score > 40) color = "text-yellow-500";
+
+            return (
+                <div className="relative flex items-center justify-center">
+                    <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
+                        <circle
+                            stroke="currentColor"
+                            fill="transparent"
+                            strokeWidth={stroke}
+                            r={normalizedRadius}
+                            cx={radius}
+                            cy={radius}
+                            className="text-gray-700"
+                        />
+                        <circle
+                            stroke="currentColor"
+                            fill="transparent"
+                            strokeWidth={stroke}
+                            strokeDasharray={circumference + ' ' + circumference}
+                            style={{ strokeDashoffset, transition: 'stroke-dashoffset 1.5s ease-out' }}
+                            strokeLinecap="round"
+                            r={normalizedRadius}
+                            cx={radius}
+                            cy={radius}
+                            className={`${color} drop-shadow-md`}
+                        />
+                    </svg>
+                    <div className="absolute flex flex-col items-center justify-center">
+                        <span className="text-4xl font-bold text-white">{score}</span>
+                        <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Score</span>
+                    </div>
+                </div>
+            );
+        };
+
+        const StatCard = ({ iconClass, label, value, subtext, colorClass }) => (
+            <div className="bg-gray-800 border border-gray-700 rounded-2xl p-5 flex flex-col hover:border-gray-600 transition-colors">
+                <div className="flex items-center space-x-3 mb-2">
+                    <div className={`p-2 rounded-lg ${colorClass} bg-opacity-10`}>
+                        <i className={`${iconClass} ${colorClass} text-lg`}></i>
+                    </div>
+                    <span className="text-gray-400 text-sm font-medium">{label}</span>
+                </div>
+                <div className="text-2xl font-bold text-white mt-1">{value}</div>
+                {subtext && <div className="text-xs text-gray-500 mt-2">{subtext}</div>}
+            </div>
+        );
+
+        const ProgressBar = ({ label, percentage, colorClass }) => (
+            <div className="mb-4 last:mb-0">
+                <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-300 font-medium">{label}</span>
+                    <span className="text-gray-400">{percentage}%</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2.5">
+                    <div 
+                        className={`h-2.5 rounded-full ${colorClass}`} 
+                        style={{ width: `${percentage}%`, transition: 'width 1.5s ease-out' }}
+                    ></div>
+                </div>
+            </div>
+        );
+
+        // --- Main Application ---
+        function App() {
+            const [url, setUrl] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+            const [data, setData] = useState(null);
+            const [showLoginModal, setShowLoginModal] = useState(false);
+
+            const handleAnalyze = (e) => {
+                e.preventDefault();
+                if (!url.trim()) return;
+
+                const videoId = extractVideoId(url);
+                if (!videoId) {
+                    setError("Please enter a valid YouTube video URL.");
+                    setData(null);
+                    return;
+                }
+
+                setError('');
+                setLoading(true);
+                setData(null);
+
+                // Simulate network request & API processing
+                setTimeout(() => {
+                    const seed = cyrb128(videoId);
+                    const rand = sfc32(seed[0], seed[1], seed[2], seed[3]);
+                    
+                    const views = Math.floor(rand() * 5000000) + 10000;
+                    const score = Math.floor(rand() * 60) + 40;
+                    
+                    const mockData = {
+                        videoId,
+                        thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+                        fallbackThumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+                        vitalityScore: score,
+                        views: views.toLocaleString(),
+                        likes: Math.floor(views * (rand() * 0.05 + 0.01)).toLocaleString(),
+                        comments: Math.floor(views * (rand() * 0.005 + 0.001)).toLocaleString(),
+                        engagementRate: ((rand() * 8) + 2).toFixed(1),
+                        viewsPerHour: Math.floor(rand() * 5000) + 100,
+                        metrics: {
+                            momentum: Math.floor(rand() * 100),
+                            longevity: Math.floor(rand() * 100),
+                            shareability: Math.floor(rand() * 100),
+                        }
+                    };
+                    
+                    setData(mockData);
+                    setLoading(false);
+                }, 1500);
+            };
+
+            const handleThumbnailError = (e) => {
+                if (data && e.target.src !== data.fallbackThumbnail) {
+                    e.target.src = data.fallbackThumbnail;
+                }
+            };
+
+            return (
+                <div className="min-h-screen font-sans selection:bg-red-500 selection:text-white">
+                    {/* Navigation */}
+                    <nav className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-50">
+                        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                                <div className="bg-red-600 p-2 rounded-lg flex items-center justify-center">
+                                    <i className="fa-solid fa-bolt text-white"></i>
+                                </div>
+                                <span className="text-xl font-bold tracking-tight text-white flex items-center ml-2">
+                                    Vitality<span className="text-red-500">Score</span>
+                                </span>
+                            </div>
+                            <button 
+                                onClick={() => setShowLoginModal(true)}
+                                className="flex items-center space-x-2 text-sm font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-full transition-colors border border-gray-700"
+                            >
+                                <i className="fa-solid fa-right-to-bracket"></i>
+                                <span className="hidden sm:inline">Connect Account</span>
+                            </button>
+                        </div>
+                    </nav>
+
+                    {/* Main Content */}
+                    <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                        
+                        {/* Hero Search Section */}
+                        <div className="text-center max-w-3xl mx-auto mb-12">
+                            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-white">
+                                Measure the <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-400">Viral Potential</span>
+                            </h1>
+                            <p className="text-gray-400 text-lg mb-8">
+                                Enter any YouTube video URL to analyze its real-time vitality score, engagement metrics, and momentum.
+                            </p>
+                            
+                            <form onSubmit={handleAnalyze} className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <i className="fa-brands fa-youtube text-2xl text-gray-500 group-focus-within:text-red-500 transition-colors"></i>
+                                </div>
+                                <input
+                                    type="text"
+                                    value={url}
+                                    onChange={(e) => setUrl(e.target.value)}
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                    className="block w-full pl-14 pr-32 py-4 bg-gray-900 border border-gray-700 rounded-2xl leading-5 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 sm:text-lg transition-all shadow-lg"
+                                />
+                                <div className="absolute inset-y-2 right-2">
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="flex items-center justify-center w-full h-full px-6 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {loading ? (
+                                            <i className="fa-solid fa-circle-notch fa-spin"></i>
+                                        ) : (
+                                            <>
+                                                <span className="hidden sm:inline mr-2">Analyze</span>
+                                                <i className="fa-solid fa-chevron-right hidden sm:inline"></i>
+                                                <i className="fa-solid fa-magnifying-glass sm:hidden"></i>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                            
+                            {error && (
+                                <div className="mt-4 flex items-center justify-center text-red-400 space-x-2">
+                                    <i className="fa-solid fa-circle-exclamation"></i>
+                                    <span>{error}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Loading State */}
+                        {loading && (
+                            <div className="animate-pulse flex flex-col space-y-8 mt-16 max-w-4xl mx-auto">
+                                <div className="h-64 bg-gray-800 rounded-3xl w-full"></div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="h-32 bg-gray-800 rounded-2xl"></div>
+                                    <div className="h-32 bg-gray-800 rounded-2xl"></div>
+                                    <div className="h-32 bg-gray-800 rounded-2xl"></div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Results Dashboard */}
+                        {data && !loading && (
+                            <div className="max-w-5xl mx-auto transition-opacity duration-700 opacity-100">
+                                
+                                {/* Top Section: Video Info & Score */}
+                                <div className="bg-gray-800/50 border border-gray-700 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row gap-8 items-center mb-8 shadow-2xl backdrop-blur-sm">
+                                    <div className="w-full md:w-1/2 relative rounded-2xl overflow-hidden shadow-lg group">
+                                        <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-transparent opacity-60 z-10"></div>
+                                        <img 
+                                            src={data.thumbnail} 
+                                            onError={handleThumbnailError}
+                                            alt="Video Thumbnail" 
+                                            className="w-full h-auto aspect-video object-cover transform group-hover:scale-105 transition-transform duration-700"
+                                        />
+                                        <div className="absolute bottom-4 left-4 z-20 flex items-center space-x-2">
+                                            <div className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">ANALYZED</div>
+                                            <div className="bg-gray-900/80 backdrop-blur-md text-white text-xs px-2 py-1 rounded">ID: {data.videoId}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="w-full md:w-1/2 flex flex-col items-center md:items-start space-y-6">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-white mb-2 text-center md:text-left">Overall Vitality</h2>
+                                            <p className="text-gray-400 text-center md:text-left text-sm max-w-xs">
+                                                This score is calculated based on engagement velocity, views relative to time, and historical performance.
+                                            </p>
+                                        </div>
+                                        
+                                        <div className="flex items-center space-x-8 bg-gray-900/50 p-6 rounded-3xl border border-gray-700 w-full justify-center md:justify-start">
+                                            <CircularScore score={data.vitalityScore} />
+                                            <div className="flex flex-col space-y-4">
+                                                <div className="flex items-center space-x-2">
+                                                    <i className="fa-solid fa-arrow-trend-up text-green-500"></i>
+                                                    <span className="text-gray-300 font-medium">Trending Up</span>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <i className="fa-solid fa-fire text-yellow-500"></i>
+                                                    <span className="text-gray-300 font-medium">High Energy</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Stats Grid */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+                                    <StatCard 
+                                        iconClass="fa-brands fa-youtube" 
+                                        label="Estimated Views" 
+                                        value={data.views} 
+                                        subtext="Total cumulative"
+                                        colorClass="text-blue-400"
+                                    />
+                                    <StatCard 
+                                        iconClass="fa-solid fa-thumbs-up" 
+                                        label="Likes" 
+                                        value={data.likes} 
+                                        subtext="User approvals"
+                                        colorClass="text-green-400"
+                                    />
+                                    <StatCard 
+                                        iconClass="fa-solid fa-comment" 
+                                        label="Comments" 
+                                        value={data.comments} 
+                                        subtext="Active discussions"
+                                        colorClass="text-pink-400"
+                                    />
+                                    <StatCard 
+                                        iconClass="fa-solid fa-clock" 
+                                        label="Velocity" 
+                                        value={`${da    h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
   }
   h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
   h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
